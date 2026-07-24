@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import com.whybuy.app.MainActivity
 import com.whybuy.app.R
 import com.whybuy.app.WhyBuyApplication
+import com.whybuy.app.overlay.EndReason
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -21,6 +22,7 @@ import kotlinx.coroutines.launch
 class AppWatchService : LifecycleService() {
 
     private lateinit var detector: AppDetector
+    private lateinit var overlayController: OverlayController
     private var pollingJob: Job? = null
     private var lastPackage: String? = null
 
@@ -42,6 +44,7 @@ class AppWatchService : LifecycleService() {
     override fun onCreate() {
         super.onCreate()
         detector = AppDetector(this)
+        overlayController = OverlayController(this)
         startForeground(NOTI_ID, buildNotification())
 
         registerReceiver(
@@ -82,8 +85,13 @@ class AppWatchService : LifecycleService() {
     }
 
     private fun onAppChanged(packageName: String) {
-        // Week 1 목표: 여기까지 도달하면 성공
         Log.d(TAG, "앱 전환 감지 >>> $packageName")
+
+        if (packageName in TARGET_APPS) {
+            overlayController.show(packageName)
+        } else {
+            overlayController.dismiss(EndReason.APP_CLOSED)
+        }
     }
 
     private fun buildNotification(): Notification {
@@ -105,6 +113,7 @@ class AppWatchService : LifecycleService() {
 
     override fun onDestroy() {
         stopPolling()
+        overlayController.dismiss(EndReason.APP_CLOSED)
         unregisterReceiver(screenReceiver)
         Log.d(TAG, "서비스 종료")
         super.onDestroy()
@@ -114,5 +123,8 @@ class AppWatchService : LifecycleService() {
         private const val TAG = "WhyBuy"
         private const val NOTI_ID = 1001
         private const val POLL_INTERVAL = 1000L
+        private val TARGET_APPS = setOf(
+            "com.coupang.mobile" // 쿠팡
+        )
     }
 }

@@ -2,6 +2,7 @@ package com.whybuy.app
 
 import android.app.AppOpsManager
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.os.Process
 import android.provider.Settings
@@ -35,10 +36,12 @@ class MainActivity : ComponentActivity() {
 fun Week1Screen() {
     val context = LocalContext.current
     var hasUsageAccess by remember { mutableStateOf(false) }
+    var canOverlay by remember { mutableStateOf(false) }
 
     // 화면 복귀 시마다 권한 재확인
     LaunchedEffect(Unit) {
         hasUsageAccess = checkUsageAccess(context)
+        canOverlay = Settings.canDrawOverlays(context)
     }
 
     Column(
@@ -75,14 +78,36 @@ fun Week1Screen() {
 
         Button(onClick = {
             hasUsageAccess = checkUsageAccess(context)
+            canOverlay = Settings.canDrawOverlays(context)
         }) {
             Text("권한 다시 확인")
         }
 
+        Spacer(Modifier.height(16.dp))
+
+        Text(
+            if (canOverlay) "다른 앱 위에 표시: 허용됨"
+            else "다른 앱 위에 표시: 필요함"
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        Button(onClick = {
+            context.startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:${context.packageName}")
+                )
+            )
+        }) {
+            Text("표시 권한 설정 열기")
+        }
+
         Spacer(Modifier.height(32.dp))
 
+
         Button(
-            enabled = hasUsageAccess,
+            enabled = hasUsageAccess && canOverlay,
             onClick = {
                 ContextCompat.startForegroundService(
                     context,
